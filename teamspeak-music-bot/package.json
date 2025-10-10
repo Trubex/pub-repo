@@ -1,0 +1,22 @@
+{
+  "name": "teamspeak-youtube-bot",
+  "version": "1.0.0",
+  "description": "TeamSpeak bot for playing YouTube audio in voice channels",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "keywords": ["teamspeak", "bot", "youtube", "music"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ts3-nodejs-library": "^3.5.0",
+    "yt-dlp-wrap": "^2.3.9",
+    "ytsr": "^3.8.4",
+    "ffmpeg-static": "^5.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

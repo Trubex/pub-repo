@@ -1,0 +1,31 @@
+# Node modules
+node_modules/
+
+# Configuration
+config.json
+
+# Downloads cache
+downloads/
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Package manager
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

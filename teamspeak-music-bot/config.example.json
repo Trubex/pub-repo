@@ -1,0 +1,23 @@
+{
+  "teamspeak": {
+    "host": "your-teamspeak-server.com",
+    "queryport": 10011,
+    "serverport": 9987,
+    "username": "serveradmin",
+    "password": "your-query-password",
+    "nickname": "Music Bot",
+    "channel": "Music Channel"
+  },
+  "permissions": {
+    "allowedGroupIds": [6, 7],
+    "allowedUIDs": [
+      "your-unique-identifier-here"
+    ],
+    "requireBoth": false
+  },
+  "bot": {
+    "commandPrefix": "!",
+    "maxQueueSize": 50,
+    "defaultVolume": 50
+  }
+}

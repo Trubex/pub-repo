@@ -1,0 +1,23 @@
+[Unit]
+Description=TeamSpeak YouTube Music Bot
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/path/to/teamspeak-music-bot
+ExecStart=/usr/bin/node /path/to/teamspeak-music-bot/bot.js
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tsbot
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
