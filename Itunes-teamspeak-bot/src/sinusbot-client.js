@@ -2,13 +2,13 @@ const fetch = require('node-fetch');
 const logger = require('./logger');
 
 class SinusBotClient {
-  constructor(host, username, password) {
+  constructor(host, username, password, instanceId = null) {
     this.host = host;
     this.username = username;
     this.password = password;
     this.token = null;
     this.botId = null;
-    this.instanceId = null;
+    this.instanceId = instanceId; // Can be pre-configured
     this.isConnected = false;
   }
 
@@ -16,21 +16,41 @@ class SinusBotClient {
     try {
       logger.info(`Logging into SinusBot at ${this.host}...`);
 
+      // First, try to get bot list to find the botId
+      let botId = null;
+      try {
+        const botsResponse = await fetch(`${this.host}/api/v1/botId`);
+        if (botsResponse.ok) {
+          const botsData = await botsResponse.json();
+          if (botsData.defaultBotId) {
+            botId = botsData.defaultBotId;
+            logger.info(`Found default bot ID: ${botId}`);
+          }
+        }
+      } catch (error) {
+        logger.warn('Could not get bot ID, will try login without it');
+      }
+
+      const loginBody = {
+        username: this.username,
+        password: this.password
+      };
+
+      if (botId) {
+        loginBody.botId = botId;
+      }
+
       const response = await fetch(`${this.host}/api/v1/bot/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({
-          username: this.username,
-          password: this.password,
-          botId: undefined
-        })
+        body: JSON.stringify(loginBody)
       });
 
       const responseText = await response.text();
-      logger.info(`Response status: ${response.status}, body: ${responseText.substring(0, 200)}`);
+      logger.info(`Response status: ${response.status}, body: ${responseText.substring(0, 300)}`);
 
       if (!response.ok) {
         throw new Error(`Login failed: ${response.statusText} - ${responseText}`);
@@ -38,7 +58,7 @@ class SinusBotClient {
 
       const data = JSON.parse(responseText);
       this.token = data.token;
-      this.botId = data.botId;
+      this.botId = data.botId || botId;
 
       logger.success('Successfully logged into SinusBot');
       logger.info(`Token: ${this.token ? 'received' : 'missing'}`);
@@ -57,6 +77,12 @@ class SinusBotClient {
   }
 
   async getInstances() {
+    // If instance ID is pre-configured, use it
+    if (this.instanceId) {
+      logger.info(`Using pre-configured instance ID: ${this.instanceId}`);
+      return;
+    }
+
     try {
       const response = await fetch(`${this.host}/api/v1/bot/instances`, {
         headers: {

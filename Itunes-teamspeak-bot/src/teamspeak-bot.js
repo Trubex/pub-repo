@@ -8,7 +8,8 @@ class TeamSpeakBot {
     this.sinusbot = new SinusBotClient(
       config.sinusbot.host,
       config.sinusbot.username,
-      config.sinusbot.password
+      config.sinusbot.password,
+      config.sinusbot.instanceId
     );
     this.isConnected = false;
     this.currentChannel = null;

@@ -4,7 +4,8 @@ module.exports = {
   sinusbot: {
     host: process.env.SINUSBOT_HOST || 'http://localhost:8087',
     username: process.env.SINUSBOT_USERNAME || 'admin',
-    password: process.env.SINUSBOT_PASSWORD || ''
+    password: process.env.SINUSBOT_PASSWORD || '',
+    instanceId: process.env.SINUSBOT_INSTANCE_ID || null
   },
   web: {
     port: parseInt(process.env.WEB_PORT) || 3000,
