@@ -30,14 +30,10 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     environment:
-      # TeamSpeak Configuration
-      TS3_HOST: ${TS3_HOST}
-      TS3_QUERY_PORT: ${TS3_QUERY_PORT:-10011}
-      TS3_SERVER_PORT: ${TS3_SERVER_PORT:-9987}
-      TS3_USERNAME: ${TS3_USERNAME}
-      TS3_PASSWORD: ${TS3_PASSWORD}
-      TS3_NICKNAME: ${TS3_NICKNAME:-iTunes Bot}
-      TS3_CHANNEL: ${TS3_CHANNEL:-}
+      # SinusBot Configuration
+      SINUSBOT_HOST: ${SINUSBOT_HOST}
+      SINUSBOT_USERNAME: ${SINUSBOT_USERNAME}
+      SINUSBOT_PASSWORD: ${SINUSBOT_PASSWORD}
 
       # Web GUI Configuration
       WEB_PORT: 3000
