@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const path = require('path');
 const config = require('./config');
 const database = require('./database');
+const logger = require('./logger');
 
 class WebServer {
   constructor(tsBot, itunesClient) {
@@ -102,6 +103,13 @@ class WebServer {
           itunesConnected: false
         });
       }
+    });
+
+    // Logs page (protected)
+    this.app.get('/logs', requireAuth, (req, res) => {
+      res.render('logs', {
+        username: req.session.username
+      });
     });
 
     // History page (protected)
@@ -275,6 +283,19 @@ class WebServer {
       } catch (error) {
         res.status(500).json({ success: false, error: error.message });
       }
+    });
+
+    // Get logs
+    this.app.get('/api/logs', requireAuth, (req, res) => {
+      const limit = parseInt(req.query.limit) || 100;
+      const logs = logger.getLogs(limit);
+      res.json({ success: true, logs });
+    });
+
+    // Clear logs
+    this.app.post('/api/logs/clear', requireAuth, (req, res) => {
+      logger.clearLogs();
+      res.json({ success: true, message: 'Logs cleared' });
     });
   }
 

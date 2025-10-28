@@ -3,6 +3,7 @@ const iTunesClient = require('./itunes-client');
 const WebServer = require('./web-server');
 const database = require('./database');
 const config = require('./config');
+const logger = require('./logger');
 
 class iTunesTeamSpeakBot {
   constructor() {
@@ -14,48 +15,50 @@ class iTunesTeamSpeakBot {
 
   async start() {
     try {
-      console.log('Starting iTunes TeamSpeak Bot...');
+      logger.info('Starting iTunes TeamSpeak Bot...');
 
       // Connect to MySQL
-      console.log('Connecting to MySQL...');
+      logger.info('Connecting to MySQL...');
       await database.connect();
+      logger.success('MySQL connected successfully');
 
       // Start web server
-      console.log('Starting web server...');
+      logger.info('Starting web server...');
       await this.webServer.start();
+      logger.success(`Web server running on port ${config.web.port}`);
 
       // Connect to TeamSpeak (optional - will not fail if connection fails)
-      console.log('Connecting to TeamSpeak 3...');
+      logger.info('Connecting to TeamSpeak 3...');
       try {
         await this.tsBot.connect();
-        console.log('TeamSpeak connection successful');
+        logger.success('TeamSpeak connection successful');
       } catch (error) {
-        console.warn('WARNING: Cannot connect to TeamSpeak:', error.message);
-        console.warn('The bot will continue to run without TeamSpeak integration.');
+        logger.warn('Cannot connect to TeamSpeak: ' + error.message);
+        logger.warn('The bot will continue to run without TeamSpeak integration.');
       }
 
       // Check iTunes connection
-      console.log('Checking iTunes connection...');
+      logger.info('Checking iTunes connection...');
       const itunesConnected = await this.itunesClient.isConnected();
       if (itunesConnected) {
-        console.log('iTunes connection successful');
+        logger.success('iTunes connection successful');
       } else {
-        console.warn('WARNING: Cannot connect to iTunes. Make sure iTunes control script is running on host.');
+        logger.warn('Cannot connect to iTunes. Make sure iTunes control script is running on host.');
       }
 
       this.isRunning = true;
-      console.log('\n========================================');
-      console.log('iTunes TeamSpeak Bot is now running!');
-      console.log(`Web GUI: http://localhost:${config.web.port}`);
+      logger.success('\n========================================');
+      logger.success('iTunes TeamSpeak Bot is now running!');
+      logger.info(`Web GUI: http://localhost:${config.web.port}`);
       if (this.tsBot.isConnected) {
-        console.log(`TeamSpeak: Connected to ${config.teamspeak.host}`);
+        logger.info(`TeamSpeak: Connected to ${config.teamspeak.host}`);
       } else {
-        console.log('TeamSpeak: Not connected (web GUI still available)');
+        logger.warn('TeamSpeak: Not connected (web GUI still available)');
       }
-      console.log('========================================\n');
+      logger.success('========================================\n');
 
     } catch (error) {
-      console.error('Failed to start bot:', error);
+      logger.error('Failed to start bot: ' + error.message, error);
       await this.stop();
       process.exit(1);
     }

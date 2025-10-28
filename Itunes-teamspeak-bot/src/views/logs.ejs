@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs - iTunes TeamSpeak Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+        }
+
+        .navbar-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        .navbar a:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .logs-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logs-header h2 {
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+
+        .logs-container {
+            background: #1e1e1e;
+            border-radius: 5px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+            color: #d4d4d4;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: #858585;
+            margin-right: 10px;
+        }
+
+        .log-level {
+            font-weight: bold;
+            margin-right: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .log-level.info {
+            background: #0e639c;
+            color: #4fc3f7;
+        }
+
+        .log-level.error {
+            background: #5a1d1d;
+            color: #f44336;
+        }
+
+        .log-level.warn {
+            background: #5d4e1a;
+            color: #ffb74d;
+        }
+
+        .log-level.success {
+            background: #1b5e20;
+            color: #66bb6a;
+        }
+
+        .log-message {
+            color: #d4d4d4;
+        }
+
+        .log-data {
+            color: #9cdcfe;
+            margin-left: 80px;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+
+        .no-logs {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .auto-scroll-toggle {
+            margin-left: 15px;
+        }
+
+        .auto-scroll-toggle input {
+            margin-right: 5px;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            background: #4caf50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .notification.error {
+            background: #f44336;
+        }
+
+        .notification.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+            }
+            to {
+                transform: translateX(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>🎵 iTunes TeamSpeak Bot</h1>
+        <div class="navbar-right">
+            <span>Welcome, <%= username %></span>
+            <a href="/">Dashboard</a>
+            <a href="/history">History</a>
+            <a href="/logout">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="logs-card">
+            <div class="logs-header">
+                <h2>Bot Logs</h2>
+                <div class="controls">
+                    <label class="auto-scroll-toggle">
+                        <input type="checkbox" id="autoScroll" checked>
+                        Auto-scroll
+                    </label>
+                    <button class="btn btn-primary" onclick="refreshLogs()">🔄 Refresh</button>
+                    <button class="btn btn-danger" onclick="clearLogs()">🗑 Clear Logs</button>
+                </div>
+            </div>
+
+            <div class="logs-container" id="logsContainer">
+                <div class="no-logs">Loading logs...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let autoRefreshInterval = null;
+
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = 'notification show' + (isError ? ' error' : '');
+            setTimeout(() => {
+                notification.className = 'notification';
+            }, 3000);
+        }
+
+        async function refreshLogs() {
+            try {
+                const response = await fetch('/api/logs?limit=200');
+                const data = await response.json();
+
+                if (data.success) {
+                    displayLogs(data.logs);
+                } else {
+                    showNotification('Error loading logs', true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        function displayLogs(logs) {
+            const container = document.getElementById('logsContainer');
+            const autoScroll = document.getElementById('autoScroll').checked;
+            const wasAtBottom = container.scrollHeight - container.scrollTop === container.clientHeight;
+
+            if (logs.length === 0) {
+                container.innerHTML = '<div class="no-logs">No logs available</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+
+            logs.forEach(log => {
+                const entry = document.createElement('div');
+                entry.className = 'log-entry';
+
+                const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                const level = log.level || 'info';
+
+                let html = `
+                    <span class="log-timestamp">[${timestamp}]</span>
+                    <span class="log-level ${level}">${level.toUpperCase()}</span>
+                    <span class="log-message">${escapeHtml(log.message)}</span>
+                `;
+
+                if (log.data) {
+                    html += `<div class="log-data">${escapeHtml(JSON.stringify(log.data, null, 2))}</div>`;
+                }
+
+                entry.innerHTML = html;
+                container.appendChild(entry);
+            });
+
+            // Auto-scroll to bottom if enabled and was at bottom
+            if (autoScroll && (wasAtBottom || logs.length === 1)) {
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function clearLogs() {
+            if (!confirm('Are you sure you want to clear all logs?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/logs/clear', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showNotification('Logs cleared');
+                    refreshLogs();
+                } else {
+                    showNotification('Error clearing logs', true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        // Auto-refresh every 2 seconds
+        function startAutoRefresh() {
+            refreshLogs(); // Initial load
+            autoRefreshInterval = setInterval(refreshLogs, 2000);
+        }
+
+        // Start auto-refresh on page load
+        startAutoRefresh();
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>
