@@ -24,58 +24,60 @@ class TeamSpeakBot {
         username: config.teamspeak.username,
         password: config.teamspeak.password,
         nickname: config.teamspeak.nickname,
-        protocol: QueryProtocol.RAW
+        protocol: QueryProtocol.SSH
       });
 
-      logger.success('Successfully connected to TeamSpeak ServerQuery');
+      logger.success('Successfully connected to TeamSpeak via SSH (regular client)');
 
       // Get bot info
-      const self = await this.ts3.whoami();
-      logger.info(`Bot Client ID: ${self.clientId}, Database ID: ${self.clientDatabaseId}`);
-
-      // Set security level to 9
       try {
-        logger.info('Setting client security level to 9...');
-        await this.ts3.clientUpdate({ clientSecurityHash: '' });
-        logger.success('Security level updated');
+        const self = await this.ts3.whoami();
+        logger.info(`Bot Client ID: ${self.clientId}, Database ID: ${self.clientDatabaseId}`);
       } catch (error) {
-        logger.warn('Could not set security level: ' + error.message);
+        logger.warn('Could not get bot info (may not have permissions yet): ' + error.message);
       }
 
-      // Get and log channel list
-      logger.info('Loading channel list...');
-      const channels = await this.ts3.channelList();
-      logger.success(`Loaded ${channels.length} channels from server`);
+      // Try to get and log channel list (may fail if no permissions)
+      try {
+        logger.info('Attempting to load channel list...');
+        const channels = await this.ts3.channelList();
+        logger.success(`Loaded ${channels.length} channels from server`);
 
-      // Log all channels
-      channels.forEach(channel => {
-        logger.info(`  - Channel: ${channel.name} (ID: ${channel.cid})`);
-      });
+        // Log all channels
+        channels.forEach(channel => {
+          logger.info(`  - Channel: ${channel.name} (ID: ${channel.cid})`);
+        });
 
-      // Get current channel
-      const currentChannel = channels.find(c => c.cid === self.channelId);
-      this.currentChannel = currentChannel ? currentChannel.name : 'Unknown';
-      logger.info(`Bot is currently in channel: ${this.currentChannel}`);
+        // Get current channel
+        const self = await this.ts3.whoami();
+        const currentChannel = channels.find(c => c.cid === self.channelId);
+        this.currentChannel = currentChannel ? currentChannel.name : 'Unknown';
+        logger.info(`Bot is currently in channel: ${this.currentChannel}`);
 
-      // Move to specified channel if provided
-      if (config.teamspeak.channel) {
-        logger.info(`Looking for channel: ${config.teamspeak.channel}`);
-        const targetChannel = channels.find(c => c.name === config.teamspeak.channel);
-        if (targetChannel) {
-          logger.info(`Found target channel (ID: ${targetChannel.cid}), moving bot...`);
-          await this.ts3.clientMove(self.clientId, targetChannel.cid);
-          this.currentChannel = targetChannel.name;
-          logger.success(`Successfully moved to channel: ${config.teamspeak.channel}`);
+        // Move to specified channel if provided
+        if (config.teamspeak.channel) {
+          logger.info(`Looking for channel: ${config.teamspeak.channel}`);
+          const targetChannel = channels.find(c => c.name === config.teamspeak.channel);
+          if (targetChannel) {
+            logger.info(`Found target channel (ID: ${targetChannel.cid}), moving bot...`);
+            await this.ts3.clientMove(self.clientId, targetChannel.cid);
+            this.currentChannel = targetChannel.name;
+            logger.success(`Successfully moved to channel: ${config.teamspeak.channel}`);
+          } else {
+            logger.error(`Channel "${config.teamspeak.channel}" not found on server`);
+          }
         } else {
-          logger.error(`Channel "${config.teamspeak.channel}" not found on server`);
+          logger.info('No default channel specified, staying in current channel');
         }
-      } else {
-        logger.info('No default channel specified, staying in current channel');
+      } catch (error) {
+        logger.warn('Could not list/join channels (insufficient permissions): ' + error.message);
+        logger.info('Bot connected but needs Server Admin to assign permissions');
+        logger.info('Once permissions are granted, use the Reconnect button in web GUI');
       }
 
       this.isConnected = true;
       this.setupEventHandlers();
-      logger.success('TeamSpeak bot fully initialized and ready');
+      logger.success('TeamSpeak bot connected and ready (waiting for permissions to be assigned)');
     } catch (error) {
       logger.error('TeamSpeak connection error: ' + error.message, error);
       this.isConnected = false;
