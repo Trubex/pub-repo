@@ -51,9 +51,9 @@ class iTunesTeamSpeakBot {
       logger.success('iTunes TeamSpeak Bot is now running!');
       logger.info(`Web GUI: http://localhost:${config.web.port}`);
       if (this.tsBot.isConnected) {
-        logger.info(`TeamSpeak: Connected to ${config.teamspeak.host}`);
+        logger.info(`SinusBot: Connected to ${config.sinusbot.host}`);
       } else {
-        logger.warn('TeamSpeak: Not connected (web GUI still available)');
+        logger.warn('SinusBot: Not connected (web GUI still available)');
       }
       logger.success('========================================\n');
 

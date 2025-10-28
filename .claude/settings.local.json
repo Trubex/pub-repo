@@ -7,7 +7,8 @@
       "Bash(copy:*)",
       "Bash(docker-compose up:*)",
       "Bash(docker compose:*)",
-      "Bash(nslookup:*)"
+      "Bash(nslookup:*)",
+      "Bash(docker-compose down:*)"
     ],
     "deny": [],
     "ask": []
