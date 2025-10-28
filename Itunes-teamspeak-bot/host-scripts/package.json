@@ -1,0 +1,21 @@
+{
+  "name": "itunes-control-server",
+  "version": "1.0.0",
+  "description": "iTunes/Music control server for host machine",
+  "main": "itunes-server-windows.js",
+  "scripts": {
+    "start:windows": "node itunes-server-windows.js",
+    "start:macos": "node itunes-server-macos.js"
+  },
+  "keywords": [
+    "itunes",
+    "music",
+    "control"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "winax": "^3.3.6"
+  }
+}

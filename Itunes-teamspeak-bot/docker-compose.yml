@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: itunes-bot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-itunesbot}
+      MYSQL_USER: ${MYSQL_USER:-itunesbot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-itunesbot_password}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - itunes-bot-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    container_name: itunes-teamspeak-bot
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      # TeamSpeak Configuration
+      TS3_HOST: ${TS3_HOST}
+      TS3_QUERY_PORT: ${TS3_QUERY_PORT:-10011}
+      TS3_SERVER_PORT: ${TS3_SERVER_PORT:-9987}
+      TS3_USERNAME: ${TS3_USERNAME}
+      TS3_PASSWORD: ${TS3_PASSWORD}
+      TS3_NICKNAME: ${TS3_NICKNAME:-iTunes Bot}
+      TS3_CHANNEL: ${TS3_CHANNEL:-}
+
+      # Web GUI Configuration
+      WEB_PORT: 3000
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      SESSION_SECRET: ${SESSION_SECRET}
+
+      # MySQL Configuration
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: ${MYSQL_USER:-itunesbot}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-itunesbot_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-itunesbot}
+
+      # iTunes Configuration
+      ITUNES_PLATFORM: ${ITUNES_PLATFORM:-windows}
+      ITUNES_HOST: ${ITUNES_HOST:-host.docker.internal}
+      ITUNES_PORT: ${ITUNES_PORT:-8181}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - itunes-bot-network
+
+volumes:
+  mysql-data:
+
+networks:
+  itunes-bot-network:
+    driver: bridge
