@@ -1,0 +1,357 @@
+const { TeamSpeak, QueryProtocol } = require('ts3-nodejs-library');
+const config = require('./config');
+const iTunesClient = require('./itunes-client');
+const database = require('./database');
+const logger = require('./logger');
+
+class TeamSpeakBot {
+  constructor() {
+    this.ts3 = null;
+    this.itunes = new iTunesClient();
+    this.commandPrefix = '!';
+    this.isConnected = false;
+    this.currentChannel = null;
+  }
+
+  async connect() {
+    try {
+      logger.info(`Attempting to connect to TeamSpeak server: ${config.teamspeak.host}:${config.teamspeak.queryport}`);
+
+      this.ts3 = await TeamSpeak.connect({
+        host: config.teamspeak.host,
+        queryport: config.teamspeak.queryport,
+        serverport: config.teamspeak.serverport,
+        username: config.teamspeak.username,
+        password: config.teamspeak.password,
+        nickname: config.teamspeak.nickname,
+        protocol: QueryProtocol.RAW
+      });
+
+      logger.success('Successfully connected to TeamSpeak ServerQuery');
+
+      // Get bot info and TSUID
+      try {
+        const self = await this.ts3.whoami();
+        logger.success('========================================');
+        logger.success('BOT IDENTITY INFORMATION:');
+        logger.info(`Client ID: ${self.clientId}`);
+        logger.info(`Database ID: ${self.clientDatabaseId}`);
+        logger.info(`Client Unique ID (TSUID): ${self.clientUniqueIdentifier}`);
+        logger.success('========================================');
+        logger.warn('IMPORTANT: Assign permissions to this TSUID in TeamSpeak, then click Reconnect in web GUI');
+        logger.success('========================================');
+      } catch (error) {
+        logger.error('Could not get bot info: ' + error.message);
+      }
+
+      // Try to get and log channel list (may fail if no permissions)
+      try {
+        logger.info('Attempting to load channel list...');
+        const channels = await this.ts3.channelList();
+        logger.success(`Loaded ${channels.length} channels from server`);
+
+        // Log all channels
+        channels.forEach(channel => {
+          logger.info(`  - Channel: ${channel.name} (ID: ${channel.cid})`);
+        });
+
+        // Get current channel
+        const self = await this.ts3.whoami();
+        const currentChannel = channels.find(c => c.cid === self.channelId);
+        this.currentChannel = currentChannel ? currentChannel.name : 'Unknown';
+        logger.info(`Bot is currently in channel: ${this.currentChannel}`);
+
+        // Move to specified channel if provided
+        if (config.teamspeak.channel) {
+          logger.info(`Looking for channel: ${config.teamspeak.channel}`);
+          const targetChannel = channels.find(c => c.name === config.teamspeak.channel);
+          if (targetChannel) {
+            logger.info(`Found target channel (ID: ${targetChannel.cid}), moving bot...`);
+            await this.ts3.clientMove(self.clientId, targetChannel.cid);
+            this.currentChannel = targetChannel.name;
+            logger.success(`Successfully moved to channel: ${config.teamspeak.channel}`);
+          } else {
+            logger.error(`Channel "${config.teamspeak.channel}" not found on server`);
+          }
+        } else {
+          logger.info('No default channel specified, staying in current channel');
+        }
+      } catch (error) {
+        logger.warn('Could not list/join channels (insufficient permissions): ' + error.message);
+        logger.info('Bot connected but needs Server Admin to assign permissions');
+        logger.info('Once permissions are granted, use the Reconnect button in web GUI');
+      }
+
+      this.isConnected = true;
+      this.setupEventHandlers();
+      logger.success('TeamSpeak bot connected and ready (waiting for permissions to be assigned)');
+    } catch (error) {
+      logger.error('TeamSpeak connection error: ' + error.message, error);
+      this.isConnected = false;
+      throw error;
+    }
+  }
+
+  setupEventHandlers() {
+    // Listen for text messages
+    this.ts3.on('textmessage', async (ev) => {
+      logger.info(`Received message from ${ev.invoker.nickname}: ${ev.msg}`);
+      await this.handleCommand(ev);
+    });
+
+    // Listen for client disconnect
+    this.ts3.on('clientdisconnect', (ev) => {
+      logger.info('Client disconnected: ' + (ev.client?.nickname || 'Unknown'));
+    });
+
+    // Listen for errors
+    this.ts3.on('error', (error) => {
+      logger.error('TeamSpeak error: ' + error.message, error);
+      this.isConnected = false;
+    });
+
+    // Listen for close
+    this.ts3.on('close', () => {
+      logger.warn('TeamSpeak connection closed unexpectedly');
+      this.isConnected = false;
+      this.currentChannel = null;
+    });
+
+    // Listen for flooding (rate limiting)
+    this.ts3.on('flooding', () => {
+      logger.warn('Bot is being rate limited by TeamSpeak server');
+    });
+
+    logger.success('Event handlers registered');
+  }
+
+  async handleCommand(ev) {
+    const message = ev.msg.trim();
+
+    // Ignore messages that don't start with command prefix
+    if (!message.startsWith(this.commandPrefix)) {
+      return;
+    }
+
+    const parts = message.slice(this.commandPrefix.length).trim().split(/\s+/);
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+
+    console.log(`Command received: ${command} from ${ev.invoker.nickname}`);
+
+    try {
+      let response = '';
+
+      switch (command) {
+        case 'play':
+          if (args.length > 0) {
+            const query = args.join(' ');
+            const result = await this.itunes.play(query);
+            response = `Now playing: ${this.itunes.formatTrackInfo(result.track)}`;
+
+            // Add to history
+            await database.addToHistory({
+              name: result.track.name,
+              artist: result.track.artist || '',
+              album: result.track.album || '',
+              requestedBy: ev.invoker.nickname
+            });
+          } else {
+            await this.itunes.play();
+            const track = await this.itunes.getCurrentTrack();
+            response = `Resumed playback: ${this.itunes.formatTrackInfo(track)}`;
+          }
+          break;
+
+        case 'pause':
+          await this.itunes.pause();
+          response = 'Playback paused';
+          break;
+
+        case 'stop':
+          await this.itunes.stop();
+          response = 'Playback stopped';
+          break;
+
+        case 'skip':
+        case 'next':
+          await this.itunes.skip();
+          const nextTrack = await this.itunes.getCurrentTrack();
+          response = `Skipped to: ${this.itunes.formatTrackInfo(nextTrack)}`;
+          break;
+
+        case 'previous':
+        case 'prev':
+          await this.itunes.previous();
+          const prevTrack = await this.itunes.getCurrentTrack();
+          response = `Playing previous: ${this.itunes.formatTrackInfo(prevTrack)}`;
+          break;
+
+        case 'volume':
+        case 'vol':
+          if (args.length > 0) {
+            const volume = parseInt(args[0]);
+            if (isNaN(volume)) {
+              response = 'Invalid volume. Use a number between 0-100';
+            } else {
+              await this.itunes.setVolume(volume);
+              response = `Volume set to ${volume}%`;
+            }
+          } else {
+            const currentVol = await this.itunes.getVolume();
+            response = `Current volume: ${currentVol}%`;
+          }
+          break;
+
+        case 'current':
+        case 'np':
+        case 'nowplaying':
+          const current = await this.itunes.getCurrentTrack();
+          response = `Now playing: ${this.itunes.formatTrackInfo(current)}`;
+          break;
+
+        case 'search':
+          if (args.length > 0) {
+            const searchQuery = args.join(' ');
+            const results = await this.itunes.search(searchQuery, 5);
+            if (results.tracks && results.tracks.length > 0) {
+              response = 'Search results:\n' + results.tracks.map((t, i) =>
+                `${i + 1}. ${t.name} - ${t.artist || 'Unknown'}`
+              ).join('\n');
+            } else {
+              response = 'No results found';
+            }
+          } else {
+            response = 'Usage: !search <query>';
+          }
+          break;
+
+        case 'help':
+          response = this.getHelpText();
+          break;
+
+        default:
+          response = `Unknown command: ${command}. Type !help for available commands`;
+      }
+
+      // Send response back to user
+      if (response) {
+        await this.sendMessage(ev.invoker.clid, response);
+      }
+
+    } catch (error) {
+      logger.error('Command error: ' + error.message, error);
+      await this.sendMessage(ev.invoker.clid, `Error: ${error.message}`);
+    }
+  }
+
+  async sendMessage(clientId, message) {
+    try {
+      await this.ts3.sendTextMessage(clientId, 1, message);
+    } catch (error) {
+      logger.error('Send message error: ' + error.message);
+    }
+  }
+
+  getHelpText() {
+    return `
+Available commands:
+!play [search] - Play a track or resume playback
+!pause - Pause playback
+!stop - Stop playback
+!skip/!next - Skip to next track
+!previous/!prev - Go to previous track
+!volume [0-100] - Set or get volume
+!current/!np - Show currently playing track
+!search <query> - Search for tracks
+!help - Show this help message
+    `.trim();
+  }
+
+  async disconnect() {
+    if (this.ts3) {
+      logger.info('Disconnecting from TeamSpeak...');
+      await this.ts3.quit();
+      this.isConnected = false;
+      this.currentChannel = null;
+      logger.success('Disconnected from TeamSpeak 3');
+    }
+  }
+
+  async reconnect() {
+    logger.info('Reconnecting to TeamSpeak...');
+    try {
+      await this.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      await this.connect();
+      logger.success('Reconnection successful');
+    } catch (error) {
+      logger.error('Reconnection failed: ' + error.message, error);
+      throw error;
+    }
+  }
+
+  async joinChannel(channelName) {
+    if (!this.isConnected || !this.ts3) {
+      logger.error('Cannot join channel: Not connected to TeamSpeak');
+      throw new Error('Not connected to TeamSpeak');
+    }
+
+    logger.info(`Attempting to join channel: ${channelName}`);
+
+    const channels = await this.ts3.channelList();
+    const targetChannel = channels.find(c => c.name === channelName);
+
+    if (!targetChannel) {
+      logger.error(`Channel "${channelName}" not found on server`);
+      throw new Error(`Channel "${channelName}" not found`);
+    }
+
+    const self = await this.ts3.whoami();
+    await this.ts3.clientMove(self.clientId, targetChannel.cid);
+    this.currentChannel = channelName;
+    logger.success(`Successfully joined channel: ${channelName}`);
+
+    return { success: true, channel: channelName };
+  }
+
+  async getChannelList() {
+    if (!this.isConnected || !this.ts3) {
+      throw new Error('Not connected to TeamSpeak');
+    }
+
+    const channels = await this.ts3.channelList();
+    return channels.map(c => ({
+      id: c.cid,
+      name: c.name,
+      parentId: c.pid
+    }));
+  }
+
+  async getCurrentChannel() {
+    if (!this.isConnected || !this.ts3) {
+      return null;
+    }
+
+    try {
+      const self = await this.ts3.whoami();
+      const channels = await this.ts3.channelList();
+      const currentChannel = channels.find(c => c.cid === self.channelId);
+      this.currentChannel = currentChannel ? currentChannel.name : null;
+      return this.currentChannel;
+    } catch (error) {
+      return this.currentChannel;
+    }
+  }
+
+  getStatus() {
+    return {
+      connected: this.isConnected,
+      serverName: config.teamspeak.host,
+      nickname: config.teamspeak.nickname,
+      currentChannel: this.currentChannel
+    };
+  }
+}
+
+module.exports = TeamSpeakBot;

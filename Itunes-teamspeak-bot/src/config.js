@@ -1,14 +1,10 @@
 require('dotenv').config();
 
 module.exports = {
-  teamspeak: {
-    host: process.env.TS3_HOST || 'localhost',
-    queryport: parseInt(process.env.TS3_QUERY_PORT) || 10011,
-    serverport: parseInt(process.env.TS3_SERVER_PORT) || 9987,
-    username: process.env.TS3_USERNAME || 'serveradmin',
-    password: process.env.TS3_PASSWORD || '',
-    nickname: process.env.TS3_NICKNAME || 'iTunes Bot',
-    channel: process.env.TS3_CHANNEL || ''
+  sinusbot: {
+    host: process.env.SINUSBOT_HOST || 'http://localhost:8087',
+    username: process.env.SINUSBOT_USERNAME || 'admin',
+    password: process.env.SINUSBOT_PASSWORD || ''
   },
   web: {
     port: parseInt(process.env.WEB_PORT) || 3000,
