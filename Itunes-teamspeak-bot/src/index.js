@@ -24,9 +24,15 @@ class iTunesTeamSpeakBot {
       console.log('Starting web server...');
       await this.webServer.start();
 
-      // Connect to TeamSpeak
+      // Connect to TeamSpeak (optional - will not fail if connection fails)
       console.log('Connecting to TeamSpeak 3...');
-      await this.tsBot.connect();
+      try {
+        await this.tsBot.connect();
+        console.log('TeamSpeak connection successful');
+      } catch (error) {
+        console.warn('WARNING: Cannot connect to TeamSpeak:', error.message);
+        console.warn('The bot will continue to run without TeamSpeak integration.');
+      }
 
       // Check iTunes connection
       console.log('Checking iTunes connection...');
@@ -41,7 +47,11 @@ class iTunesTeamSpeakBot {
       console.log('\n========================================');
       console.log('iTunes TeamSpeak Bot is now running!');
       console.log(`Web GUI: http://localhost:${config.web.port}`);
-      console.log(`TeamSpeak: Connected to ${config.teamspeak.host}`);
+      if (this.tsBot.isConnected) {
+        console.log(`TeamSpeak: Connected to ${config.teamspeak.host}`);
+      } else {
+        console.log('TeamSpeak: Not connected (web GUI still available)');
+      }
       console.log('========================================\n');
 
     } catch (error) {

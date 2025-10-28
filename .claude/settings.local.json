@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir)",
+      "Bash(npm install:*)",
+      "Bash(npm run start:windows:*)",
+      "Bash(copy:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
