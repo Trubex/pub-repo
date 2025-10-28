@@ -115,6 +115,42 @@ class TeamSpeakBot {
     }
   }
 
+  async updateTeamSpeakServer(serverAddress, serverPassword = '') {
+    try {
+      logger.info(`Updating TeamSpeak server to: ${serverAddress}`);
+
+      // Update the SinusBot instance settings
+      await this.sinusbot.setTeamSpeakServer(serverAddress, serverPassword);
+
+      // Update local config
+      config.teamspeak.host = serverAddress;
+
+      logger.success(`TeamSpeak server updated to: ${serverAddress}`);
+      return { success: true, message: 'Server updated successfully' };
+    } catch (error) {
+      logger.error('Failed to update TeamSpeak server: ' + error.message);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getTeamSpeakServer() {
+    try {
+      const settings = await this.sinusbot.getInstanceSettings();
+      return {
+        success: true,
+        serverAddress: settings.hostAddress || config.teamspeak.host,
+        serverPort: settings.hostPort || 9987
+      };
+    } catch (error) {
+      logger.error('Failed to get TeamSpeak server settings: ' + error.message);
+      return {
+        success: false,
+        serverAddress: config.teamspeak.host,
+        error: error.message
+      };
+    }
+  }
+
   async joinChannel(channelName) {
     logger.warn('Channel joining is managed by SinusBot settings');
     logger.info('Please use the SinusBot web interface to configure the channel');

@@ -315,6 +315,30 @@ class WebServer {
       }
     });
 
+    // TeamSpeak: Get server settings
+    this.app.get('/api/teamspeak/server', requireAuth, async (req, res) => {
+      try {
+        const result = await this.tsBot.getTeamSpeakServer();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Update server settings
+    this.app.post('/api/teamspeak/server', requireAuth, async (req, res) => {
+      try {
+        const { serverAddress, serverPassword } = req.body;
+        if (!serverAddress) {
+          return res.status(400).json({ success: false, error: 'Server address is required' });
+        }
+        const result = await this.tsBot.updateTeamSpeakServer(serverAddress, serverPassword || '');
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     // Get logs
     this.app.get('/api/logs', requireAuth, (req, res) => {
       const limit = parseInt(req.query.limit) || 100;

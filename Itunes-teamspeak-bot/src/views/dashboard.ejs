@@ -358,6 +358,16 @@
                 </div>
             </div>
 
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 600;">TeamSpeak Server Address:</label>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="serverAddress" class="search-input" style="flex: 1; margin: 0;" placeholder="intern-ts3.icefuse.net" value="">
+                    <input type="password" id="serverPassword" class="search-input" style="width: 150px; margin: 0;" placeholder="Password (optional)">
+                </div>
+                <button class="btn btn-primary" onclick="updateServerAddress()">💾 Update Server</button>
+                <button class="btn btn-secondary" onclick="loadCurrentServer()">🔄 Load Current</button>
+            </div>
+
             <div class="controls" style="margin-bottom: 20px;">
                 <button class="btn btn-primary" onclick="connectToTeamSpeak()">🟢 Connect to TS3</button>
                 <button class="btn btn-secondary" onclick="disconnectFromTeamSpeak()">🔴 Disconnect from TS3</button>
@@ -695,6 +705,51 @@
             }
         }
 
+        // Server management functions
+        async function loadCurrentServer() {
+            try {
+                const response = await fetch('/api/teamspeak/server');
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('serverAddress').value = data.serverAddress || '';
+                    showNotification('Server settings loaded');
+                } else {
+                    showNotification('Failed to load server: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function updateServerAddress() {
+            const serverAddress = document.getElementById('serverAddress').value.trim();
+            const serverPassword = document.getElementById('serverPassword').value;
+
+            if (!serverAddress) {
+                showNotification('Please enter a server address', true);
+                return;
+            }
+
+            try {
+                showNotification('Updating server address...');
+                const response = await fetch('/api/teamspeak/server', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ serverAddress, serverPassword })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Server address updated successfully!');
+                    document.getElementById('serverPassword').value = ''; // Clear password
+                    await checkTeamSpeakStatus();
+                } else {
+                    showNotification('Failed to update: ' + data.message, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
         // TeamSpeak server connection functions
         async function connectToTeamSpeak() {
             try {
@@ -768,6 +823,7 @@
         // Load TeamSpeak status on page load
         updateTeamSpeakStatus();
         checkTeamSpeakStatus();
+        loadCurrentServer();
     </script>
 </body>
 </html>

@@ -3,7 +3,8 @@ const logger = require('./logger');
 
 class SinusBotClient {
   constructor(host, username, password, instanceId = null) {
-    this.host = host;
+    // Remove any trailing slashes or hash fragments from host
+    this.host = host.replace(/\/#.*$/, '').replace(/\/$/, '');
     this.username = username;
     this.password = password;
     this.token = null;
@@ -176,6 +177,48 @@ class SinusBotClient {
       return true;
     } catch (error) {
       logger.error('Failed to disconnect instance: ' + error.message);
+      throw error;
+    }
+  }
+
+  async getInstanceSettings() {
+    try {
+      const data = await this.request(`/api/v1/bot/i/${this.instanceId}/settings`);
+      return data;
+    } catch (error) {
+      logger.error('Failed to get instance settings: ' + error.message);
+      throw error;
+    }
+  }
+
+  async updateInstanceSettings(settings) {
+    try {
+      logger.info('Updating instance settings...');
+      const data = await this.request(`/api/v1/bot/i/${this.instanceId}/settings`, 'POST', settings);
+      logger.success('Instance settings updated successfully');
+      return data;
+    } catch (error) {
+      logger.error('Failed to update instance settings: ' + error.message);
+      throw error;
+    }
+  }
+
+  async setTeamSpeakServer(serverAddress, serverPassword = '') {
+    try {
+      logger.info(`Setting TeamSpeak server to: ${serverAddress}`);
+      const settings = await this.getInstanceSettings();
+
+      // Update the server address and password
+      settings.hostAddress = serverAddress;
+      if (serverPassword) {
+        settings.serverPassword = serverPassword;
+      }
+
+      await this.updateInstanceSettings(settings);
+      logger.success(`TeamSpeak server updated to: ${serverAddress}`);
+      return true;
+    } catch (error) {
+      logger.error('Failed to set TeamSpeak server: ' + error.message);
       throw error;
     }
   }
