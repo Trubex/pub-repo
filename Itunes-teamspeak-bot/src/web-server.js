@@ -285,6 +285,36 @@ class WebServer {
       }
     });
 
+    // TeamSpeak: Connect bot to TeamSpeak server
+    this.app.post('/api/teamspeak/connect-ts', requireAuth, async (req, res) => {
+      try {
+        const result = await this.tsBot.connectToTeamSpeak();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Disconnect bot from TeamSpeak server
+    this.app.post('/api/teamspeak/disconnect-ts', requireAuth, async (req, res) => {
+      try {
+        const result = await this.tsBot.disconnectFromTeamSpeak();
+        res.json(result);
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Get TeamSpeak connection status
+    this.app.get('/api/teamspeak/ts-status', requireAuth, async (req, res) => {
+      try {
+        const status = await this.tsBot.getTeamSpeakConnectionStatus();
+        res.json({ success: true, ...status });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
     // Get logs
     this.app.get('/api/logs', requireAuth, (req, res) => {
       const limit = parseInt(req.query.limit) || 100;

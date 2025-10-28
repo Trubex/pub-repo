@@ -140,6 +140,46 @@ class SinusBotClient {
     return data;
   }
 
+  async getInstanceInfo() {
+    const data = await this.request(`/api/v1/bot/i/${this.instanceId}`);
+    return data;
+  }
+
+  async isInstanceConnected() {
+    try {
+      const info = await this.getInstanceInfo();
+      // Check if the instance is running and connected to TeamSpeak
+      return info && info.running === true && info.connected === true;
+    } catch (error) {
+      logger.error('Failed to check instance connection: ' + error.message);
+      return false;
+    }
+  }
+
+  async connectInstance() {
+    try {
+      logger.info('Attempting to connect SinusBot instance to TeamSpeak...');
+      await this.request(`/api/v1/bot/i/${this.instanceId}/connect`, 'POST');
+      logger.success('SinusBot instance connected to TeamSpeak');
+      return true;
+    } catch (error) {
+      logger.error('Failed to connect instance: ' + error.message);
+      throw error;
+    }
+  }
+
+  async disconnectInstance() {
+    try {
+      logger.info('Disconnecting SinusBot instance from TeamSpeak...');
+      await this.request(`/api/v1/bot/i/${this.instanceId}/disconnect`, 'POST');
+      logger.success('SinusBot instance disconnected from TeamSpeak');
+      return true;
+    } catch (error) {
+      logger.error('Failed to disconnect instance: ' + error.message);
+      throw error;
+    }
+  }
+
   async play(trackId = null) {
     if (trackId) {
       return await this.request(`/api/v1/bot/i/${this.instanceId}/play/byId/${trackId}`, 'POST');

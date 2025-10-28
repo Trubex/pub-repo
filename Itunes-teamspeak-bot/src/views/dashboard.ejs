@@ -344,11 +344,33 @@
         </div>
 
         <div class="player-card" style="margin-top: 30px;">
-            <h2>TeamSpeak Controls</h2>
+            <h2>SinusBot Connection</h2>
+
+            <div style="background: #f5f7fa; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <div style="margin-bottom: 10px;">
+                    <strong>SinusBot API:</strong> <span id="sinusbotStatus">Checking...</span>
+                </div>
+                <div style="margin-bottom: 10px;">
+                    <strong>TeamSpeak Server:</strong> <span id="tsServerStatus">Checking...</span>
+                </div>
+                <div>
+                    <strong>Instance:</strong> <span id="instanceNickname">Loading...</span>
+                </div>
+            </div>
 
             <div class="controls" style="margin-bottom: 20px;">
-                <button class="btn btn-primary" onclick="reconnectTeamSpeak()">🔄 Reconnect</button>
-                <button class="btn btn-secondary" onclick="disconnectTeamSpeak()">❌ Disconnect</button>
+                <button class="btn btn-primary" onclick="connectToTeamSpeak()">🟢 Connect to TS3</button>
+                <button class="btn btn-secondary" onclick="disconnectFromTeamSpeak()">🔴 Disconnect from TS3</button>
+                <button class="btn btn-secondary" onclick="checkTeamSpeakStatus()">🔄 Check Status</button>
+            </div>
+        </div>
+
+        <div class="player-card" style="margin-top: 30px;">
+            <h2>TeamSpeak Channel Controls</h2>
+
+            <div class="controls" style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="reconnectTeamSpeak()">🔄 Reconnect SinusBot</button>
+                <button class="btn btn-secondary" onclick="disconnectTeamSpeak()">❌ Disconnect SinusBot</button>
                 <button class="btn btn-secondary" onclick="loadChannels()">📋 Load Channels</button>
             </div>
 
@@ -673,11 +695,79 @@
             }
         }
 
+        // TeamSpeak server connection functions
+        async function connectToTeamSpeak() {
+            try {
+                showNotification('Connecting to TeamSpeak server...');
+                const response = await fetch('/api/teamspeak/connect-ts', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    if (data.alreadyConnected) {
+                        showNotification('Bot is already connected to TeamSpeak');
+                    } else {
+                        showNotification('Successfully connected to TeamSpeak!');
+                    }
+                    await checkTeamSpeakStatus();
+                } else {
+                    showNotification('Failed to connect: ' + data.message, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function disconnectFromTeamSpeak() {
+            try {
+                showNotification('Disconnecting from TeamSpeak server...');
+                const response = await fetch('/api/teamspeak/disconnect-ts', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Successfully disconnected from TeamSpeak');
+                    await checkTeamSpeakStatus();
+                } else {
+                    showNotification('Failed to disconnect: ' + data.message, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function checkTeamSpeakStatus() {
+            try {
+                const response = await fetch('/api/teamspeak/ts-status');
+                const data = await response.json();
+                if (data.success) {
+                    const sinusbotStatus = document.getElementById('sinusbotStatus');
+                    const tsServerStatus = document.getElementById('tsServerStatus');
+                    const instanceNickname = document.getElementById('instanceNickname');
+
+                    sinusbotStatus.innerHTML = '<span class="status-indicator online"></span>Connected';
+
+                    if (data.connected) {
+                        tsServerStatus.innerHTML = '<span class="status-indicator online"></span>Connected to ' + data.server;
+                    } else {
+                        tsServerStatus.innerHTML = '<span class="status-indicator offline"></span>Not connected';
+                    }
+
+                    instanceNickname.textContent = data.nickname || 'Unknown';
+                } else {
+                    document.getElementById('sinusbotStatus').innerHTML = '<span class="status-indicator offline"></span>Error: ' + data.error;
+                }
+            } catch (error) {
+                console.error('Error checking TeamSpeak status:', error);
+                document.getElementById('sinusbotStatus').innerHTML = '<span class="status-indicator offline"></span>Error';
+            }
+        }
+
         // Auto-refresh current track every 10 seconds
         setInterval(refreshStatus, 10000);
 
+        // Auto-refresh TeamSpeak status every 15 seconds
+        setInterval(checkTeamSpeakStatus, 15000);
+
         // Load TeamSpeak status on page load
         updateTeamSpeakStatus();
+        checkTeamSpeakStatus();
     </script>
 </body>
 </html>
