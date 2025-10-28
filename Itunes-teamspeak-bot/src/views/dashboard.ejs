@@ -341,6 +341,28 @@
 
             <div class="search-results" id="searchResults"></div>
         </div>
+
+        <div class="player-card" style="margin-top: 30px;">
+            <h2>TeamSpeak Controls</h2>
+
+            <div class="controls" style="margin-bottom: 20px;">
+                <button class="btn btn-primary" onclick="reconnectTeamSpeak()">🔄 Reconnect</button>
+                <button class="btn btn-secondary" onclick="disconnectTeamSpeak()">❌ Disconnect</button>
+                <button class="btn btn-secondary" onclick="loadChannels()">📋 Load Channels</button>
+            </div>
+
+            <div style="margin-bottom: 15px;">
+                <strong>Current Channel:</strong> <span id="currentChannel">Loading...</span>
+            </div>
+
+            <div>
+                <label for="channelSelect" style="display: block; margin-bottom: 8px; font-weight: 600;">Join Channel:</label>
+                <select id="channelSelect" class="search-input" style="margin-bottom: 10px;">
+                    <option value="">-- Select a channel --</option>
+                </select>
+                <button class="btn btn-primary" onclick="joinSelectedChannel()">Join Channel</button>
+            </div>
+        </div>
     </div>
 
     <div class="notification" id="notification"></div>
@@ -556,8 +578,105 @@
             }
         }
 
+        // TeamSpeak functions
+        async function reconnectTeamSpeak() {
+            try {
+                showNotification('Reconnecting to TeamSpeak...');
+                const response = await fetch('/api/teamspeak/reconnect', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Reconnected to TeamSpeak successfully');
+                    await updateTeamSpeakStatus();
+                } else {
+                    showNotification('Error: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function disconnectTeamSpeak() {
+            try {
+                const response = await fetch('/api/teamspeak/disconnect', { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Disconnected from TeamSpeak');
+                    await updateTeamSpeakStatus();
+                } else {
+                    showNotification('Error: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function loadChannels() {
+            try {
+                const response = await fetch('/api/teamspeak/channels');
+                const data = await response.json();
+                if (data.success) {
+                    const select = document.getElementById('channelSelect');
+                    select.innerHTML = '<option value="">-- Select a channel --</option>';
+
+                    data.channels.forEach(channel => {
+                        const option = document.createElement('option');
+                        option.value = channel.name;
+                        option.textContent = channel.name;
+                        select.appendChild(option);
+                    });
+
+                    showNotification('Channels loaded');
+                } else {
+                    showNotification('Error: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function joinSelectedChannel() {
+            const channelName = document.getElementById('channelSelect').value;
+            if (!channelName) {
+                showNotification('Please select a channel', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/teamspeak/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channelName })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showNotification('Joined channel: ' + channelName);
+                    await updateTeamSpeakStatus();
+                } else {
+                    showNotification('Error: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error: ' + error.message, true);
+            }
+        }
+
+        async function updateTeamSpeakStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                if (data.success) {
+                    const currentChannel = data.teamspeak.currentChannel || 'Not in a channel';
+                    document.getElementById('currentChannel').textContent = currentChannel;
+                }
+            } catch (error) {
+                console.error('Error updating TeamSpeak status:', error);
+            }
+        }
+
         // Auto-refresh current track every 10 seconds
         setInterval(refreshStatus, 10000);
+
+        // Load TeamSpeak status on page load
+        updateTeamSpeakStatus();
     </script>
 </body>
 </html>

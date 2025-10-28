@@ -215,15 +215,63 @@ class WebServer {
         const tsStatus = this.tsBot.getStatus();
         const itunesConnected = await this.itunes.isConnected();
         const currentTrack = await this.itunes.getCurrentTrack();
+        const currentChannel = await this.tsBot.getCurrentChannel();
 
         res.json({
           success: true,
-          teamspeak: tsStatus,
+          teamspeak: {
+            ...tsStatus,
+            currentChannel
+          },
           itunes: {
             connected: itunesConnected,
             currentTrack
           }
         });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Get channel list
+    this.app.get('/api/teamspeak/channels', requireAuth, async (req, res) => {
+      try {
+        const channels = await this.tsBot.getChannelList();
+        res.json({ success: true, channels });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Join channel
+    this.app.post('/api/teamspeak/join', requireAuth, async (req, res) => {
+      try {
+        const { channelName } = req.body;
+        if (!channelName) {
+          return res.status(400).json({ success: false, error: 'Channel name required' });
+        }
+        const result = await this.tsBot.joinChannel(channelName);
+        res.json({ success: true, ...result });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Disconnect
+    this.app.post('/api/teamspeak/disconnect', requireAuth, async (req, res) => {
+      try {
+        await this.tsBot.disconnect();
+        res.json({ success: true, message: 'Disconnected from TeamSpeak' });
+      } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+      }
+    });
+
+    // TeamSpeak: Reconnect
+    this.app.post('/api/teamspeak/reconnect', requireAuth, async (req, res) => {
+      try {
+        await this.tsBot.reconnect();
+        res.json({ success: true, message: 'Reconnected to TeamSpeak' });
       } catch (error) {
         res.status(500).json({ success: false, error: error.message });
       }

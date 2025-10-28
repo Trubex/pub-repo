@@ -220,6 +220,60 @@ Available commands:
     }
   }
 
+  async reconnect() {
+    console.log('Reconnecting to TeamSpeak...');
+    await this.disconnect();
+    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+    await this.connect();
+  }
+
+  async joinChannel(channelName) {
+    if (!this.isConnected || !this.ts3) {
+      throw new Error('Not connected to TeamSpeak');
+    }
+
+    const channels = await this.ts3.channelList();
+    const targetChannel = channels.find(c => c.name === channelName);
+
+    if (!targetChannel) {
+      throw new Error(`Channel "${channelName}" not found`);
+    }
+
+    const self = await this.ts3.whoami();
+    await this.ts3.clientMove(self.clientId, targetChannel.cid);
+    console.log(`Moved to channel: ${channelName}`);
+
+    return { success: true, channel: channelName };
+  }
+
+  async getChannelList() {
+    if (!this.isConnected || !this.ts3) {
+      throw new Error('Not connected to TeamSpeak');
+    }
+
+    const channels = await this.ts3.channelList();
+    return channels.map(c => ({
+      id: c.cid,
+      name: c.name,
+      parentId: c.pid
+    }));
+  }
+
+  async getCurrentChannel() {
+    if (!this.isConnected || !this.ts3) {
+      return null;
+    }
+
+    try {
+      const self = await this.ts3.whoami();
+      const channels = await this.ts3.channelList();
+      const currentChannel = channels.find(c => c.cid === self.channelId);
+      return currentChannel ? currentChannel.name : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   getStatus() {
     return {
       connected: this.isConnected,
