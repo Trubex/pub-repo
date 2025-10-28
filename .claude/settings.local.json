@@ -8,7 +8,8 @@
       "Bash(docker-compose up:*)",
       "Bash(docker compose:*)",
       "Bash(nslookup:*)",
-      "Bash(docker-compose down:*)"
+      "Bash(docker-compose down:*)",
+      "Bash(powershell.exe -Command \"cd ''d:\\pub-repo\\Itunes-teamspeak-bot''; docker compose down\")"
     ],
     "deny": [],
     "ask": []

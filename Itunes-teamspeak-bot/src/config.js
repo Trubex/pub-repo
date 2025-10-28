@@ -7,6 +7,9 @@ module.exports = {
     password: process.env.SINUSBOT_PASSWORD || '',
     instanceId: process.env.SINUSBOT_INSTANCE_ID || null
   },
+  teamspeak: {
+    host: process.env.TS3_HOST || 'intern-ts3.icefuse.net'
+  },
   web: {
     port: parseInt(process.env.WEB_PORT) || 3000,
     adminUsername: process.env.ADMIN_USERNAME || 'admin',
