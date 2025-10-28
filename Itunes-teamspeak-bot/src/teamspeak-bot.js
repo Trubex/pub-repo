@@ -2,6 +2,7 @@ const { TeamSpeak, QueryProtocol } = require('ts3-nodejs-library');
 const config = require('./config');
 const iTunesClient = require('./itunes-client');
 const database = require('./database');
+const logger = require('./logger');
 
 class TeamSpeakBot {
   constructor() {
@@ -9,10 +10,13 @@ class TeamSpeakBot {
     this.itunes = new iTunesClient();
     this.commandPrefix = '!';
     this.isConnected = false;
+    this.currentChannel = null;
   }
 
   async connect() {
     try {
+      logger.info(`Attempting to connect to TeamSpeak server: ${config.teamspeak.host}:${config.teamspeak.queryport}`);
+
       this.ts3 = await TeamSpeak.connect({
         host: config.teamspeak.host,
         queryport: config.teamspeak.queryport,
@@ -23,23 +27,58 @@ class TeamSpeakBot {
         protocol: QueryProtocol.RAW
       });
 
-      console.log('Connected to TeamSpeak 3 server');
+      logger.success('Successfully connected to TeamSpeak ServerQuery');
+
+      // Get bot info
+      const self = await this.ts3.whoami();
+      logger.info(`Bot Client ID: ${self.clientId}, Database ID: ${self.clientDatabaseId}`);
+
+      // Set security level to 9
+      try {
+        logger.info('Setting client security level to 9...');
+        await this.ts3.clientUpdate({ clientSecurityHash: '' });
+        logger.success('Security level updated');
+      } catch (error) {
+        logger.warn('Could not set security level: ' + error.message);
+      }
+
+      // Get and log channel list
+      logger.info('Loading channel list...');
+      const channels = await this.ts3.channelList();
+      logger.success(`Loaded ${channels.length} channels from server`);
+
+      // Log all channels
+      channels.forEach(channel => {
+        logger.info(`  - Channel: ${channel.name} (ID: ${channel.cid})`);
+      });
+
+      // Get current channel
+      const currentChannel = channels.find(c => c.cid === self.channelId);
+      this.currentChannel = currentChannel ? currentChannel.name : 'Unknown';
+      logger.info(`Bot is currently in channel: ${this.currentChannel}`);
 
       // Move to specified channel if provided
       if (config.teamspeak.channel) {
-        const channels = await this.ts3.channelList();
+        logger.info(`Looking for channel: ${config.teamspeak.channel}`);
         const targetChannel = channels.find(c => c.name === config.teamspeak.channel);
         if (targetChannel) {
-          const self = await this.ts3.whoami();
+          logger.info(`Found target channel (ID: ${targetChannel.cid}), moving bot...`);
           await this.ts3.clientMove(self.clientId, targetChannel.cid);
-          console.log(`Moved to channel: ${config.teamspeak.channel}`);
+          this.currentChannel = targetChannel.name;
+          logger.success(`Successfully moved to channel: ${config.teamspeak.channel}`);
+        } else {
+          logger.error(`Channel "${config.teamspeak.channel}" not found on server`);
         }
+      } else {
+        logger.info('No default channel specified, staying in current channel');
       }
 
       this.isConnected = true;
       this.setupEventHandlers();
+      logger.success('TeamSpeak bot fully initialized and ready');
     } catch (error) {
-      console.error('TeamSpeak connection error:', error);
+      logger.error('TeamSpeak connection error: ' + error.message, error);
+      this.isConnected = false;
       throw error;
     }
   }
@@ -47,26 +86,34 @@ class TeamSpeakBot {
   setupEventHandlers() {
     // Listen for text messages
     this.ts3.on('textmessage', async (ev) => {
+      logger.info(`Received message from ${ev.invoker.nickname}: ${ev.msg}`);
       await this.handleCommand(ev);
     });
 
     // Listen for client disconnect
     this.ts3.on('clientdisconnect', (ev) => {
-      console.log('Client disconnected:', ev.client?.nickname);
+      logger.info('Client disconnected: ' + (ev.client?.nickname || 'Unknown'));
     });
 
     // Listen for errors
     this.ts3.on('error', (error) => {
-      console.error('TeamSpeak error:', error);
+      logger.error('TeamSpeak error: ' + error.message, error);
+      this.isConnected = false;
     });
 
     // Listen for close
     this.ts3.on('close', () => {
-      console.log('TeamSpeak connection closed');
+      logger.warn('TeamSpeak connection closed unexpectedly');
       this.isConnected = false;
+      this.currentChannel = null;
     });
 
-    console.log('Event handlers registered');
+    // Listen for flooding (rate limiting)
+    this.ts3.on('flooding', () => {
+      logger.warn('Bot is being rate limited by TeamSpeak server');
+    });
+
+    logger.success('Event handlers registered');
   }
 
   async handleCommand(ev) {
@@ -184,7 +231,7 @@ class TeamSpeakBot {
       }
 
     } catch (error) {
-      console.error('Command error:', error);
+      logger.error('Command error: ' + error.message, error);
       await this.sendMessage(ev.invoker.clid, `Error: ${error.message}`);
     }
   }
@@ -193,7 +240,7 @@ class TeamSpeakBot {
     try {
       await this.ts3.sendTextMessage(clientId, 1, message);
     } catch (error) {
-      console.error('Send message error:', error);
+      logger.error('Send message error: ' + error.message);
     }
   }
 
@@ -214,34 +261,47 @@ Available commands:
 
   async disconnect() {
     if (this.ts3) {
+      logger.info('Disconnecting from TeamSpeak...');
       await this.ts3.quit();
       this.isConnected = false;
-      console.log('Disconnected from TeamSpeak 3');
+      this.currentChannel = null;
+      logger.success('Disconnected from TeamSpeak 3');
     }
   }
 
   async reconnect() {
-    console.log('Reconnecting to TeamSpeak...');
-    await this.disconnect();
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-    await this.connect();
+    logger.info('Reconnecting to TeamSpeak...');
+    try {
+      await this.disconnect();
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      await this.connect();
+      logger.success('Reconnection successful');
+    } catch (error) {
+      logger.error('Reconnection failed: ' + error.message, error);
+      throw error;
+    }
   }
 
   async joinChannel(channelName) {
     if (!this.isConnected || !this.ts3) {
+      logger.error('Cannot join channel: Not connected to TeamSpeak');
       throw new Error('Not connected to TeamSpeak');
     }
+
+    logger.info(`Attempting to join channel: ${channelName}`);
 
     const channels = await this.ts3.channelList();
     const targetChannel = channels.find(c => c.name === channelName);
 
     if (!targetChannel) {
+      logger.error(`Channel "${channelName}" not found on server`);
       throw new Error(`Channel "${channelName}" not found`);
     }
 
     const self = await this.ts3.whoami();
     await this.ts3.clientMove(self.clientId, targetChannel.cid);
-    console.log(`Moved to channel: ${channelName}`);
+    this.currentChannel = channelName;
+    logger.success(`Successfully joined channel: ${channelName}`);
 
     return { success: true, channel: channelName };
   }
@@ -268,9 +328,10 @@ Available commands:
       const self = await this.ts3.whoami();
       const channels = await this.ts3.channelList();
       const currentChannel = channels.find(c => c.cid === self.channelId);
-      return currentChannel ? currentChannel.name : null;
+      this.currentChannel = currentChannel ? currentChannel.name : null;
+      return this.currentChannel;
     } catch (error) {
-      return null;
+      return this.currentChannel;
     }
   }
 
@@ -278,7 +339,8 @@ Available commands:
     return {
       connected: this.isConnected,
       serverName: config.teamspeak.host,
-      nickname: config.teamspeak.nickname
+      nickname: config.teamspeak.nickname,
+      currentChannel: this.currentChannel
     };
   }
 }
