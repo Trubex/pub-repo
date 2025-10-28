@@ -19,23 +19,29 @@ class SinusBotClient {
       const response = await fetch(`${this.host}/api/v1/bot/login`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
           username: this.username,
-          password: this.password
+          password: this.password,
+          botId: undefined
         })
       });
 
+      const responseText = await response.text();
+      logger.info(`Response status: ${response.status}, body: ${responseText.substring(0, 200)}`);
+
       if (!response.ok) {
-        throw new Error(`Login failed: ${response.statusText}`);
+        throw new Error(`Login failed: ${response.statusText} - ${responseText}`);
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
       this.token = data.token;
       this.botId = data.botId;
 
       logger.success('Successfully logged into SinusBot');
+      logger.info(`Token: ${this.token ? 'received' : 'missing'}`);
       logger.info(`Bot ID: ${this.botId}`);
 
       // Get instances
