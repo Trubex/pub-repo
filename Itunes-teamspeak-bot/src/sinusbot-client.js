@@ -4,7 +4,13 @@ const logger = require('./logger');
 class SinusBotClient {
   constructor(host, username, password, instanceId = null) {
     // Remove any trailing slashes or hash fragments from host
-    this.host = host.replace(/\/#.*$/, '').replace(/\/$/, '');
+    // Handle both /#/ and trailing slashes
+    this.host = host
+      .replace(/\/#.*$/, '')  // Remove /#/ and everything after
+      .replace(/#.*$/, '')     // Remove # and everything after
+      .replace(/\/$/, '');     // Remove trailing slash
+
+    logger.info(`SinusBot host cleaned: ${this.host}`);
     this.username = username;
     this.password = password;
     this.token = null;
@@ -127,7 +133,9 @@ class SinusBotClient {
       options.body = JSON.stringify(body);
     }
 
-    const response = await fetch(`${this.host}${endpoint}`, options);
+    const fullUrl = `${this.host}${endpoint}`;
+    logger.info(`Making API request to: ${fullUrl}`);
+    const response = await fetch(fullUrl, options);
 
     if (!response.ok) {
       throw new Error(`API request failed: ${response.statusText}`);
