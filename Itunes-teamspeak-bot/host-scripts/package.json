@@ -5,7 +5,8 @@
   "main": "itunes-server-windows.js",
   "scripts": {
     "start:windows": "node itunes-server-windows.js",
-    "start:macos": "node itunes-server-macos.js"
+    "start:macos": "node itunes-server-macos.js",
+    "stream:windows": "node audio-stream-server.js"
   },
   "keywords": [
     "itunes",

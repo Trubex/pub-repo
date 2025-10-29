@@ -10,7 +10,8 @@
       "Bash(nslookup:*)",
       "Bash(docker-compose down:*)",
       "Bash(powershell.exe -Command \"cd ''d:\\pub-repo\\Itunes-teamspeak-bot''; docker compose down\")",
-      "Bash(powershell.exe -Command \"docker compose down; docker compose up -d --build bot\")"
+      "Bash(powershell.exe -Command \"docker compose down; docker compose up -d --build bot\")",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
