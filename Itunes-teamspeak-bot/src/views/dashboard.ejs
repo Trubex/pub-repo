@@ -369,8 +369,8 @@
             </div>
 
             <div class="controls" style="margin-bottom: 20px;">
-                <button class="btn btn-primary" onclick="connectToTeamSpeak()">🟢 Connect to TS3</button>
-                <button class="btn btn-secondary" onclick="disconnectFromTeamSpeak()">🔴 Disconnect from TS3</button>
+                <button class="btn btn-primary" onclick="connectToTeamSpeak()">▶️ Start Instance</button>
+                <button class="btn btn-secondary" onclick="disconnectFromTeamSpeak()">⏹️ Stop Instance</button>
                 <button class="btn btn-secondary" onclick="checkTeamSpeakStatus()">🔄 Check Status</button>
             </div>
         </div>
@@ -753,18 +753,14 @@
         // TeamSpeak server connection functions
         async function connectToTeamSpeak() {
             try {
-                showNotification('Connecting to TeamSpeak server...');
+                showNotification('Starting SinusBot instance...');
                 const response = await fetch('/api/teamspeak/connect-ts', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
-                    if (data.alreadyConnected) {
-                        showNotification('Bot is already connected to TeamSpeak');
-                    } else {
-                        showNotification('Successfully connected to TeamSpeak!');
-                    }
+                    showNotification('SinusBot instance started successfully!');
                     await checkTeamSpeakStatus();
                 } else {
-                    showNotification('Failed to connect: ' + data.message, true);
+                    showNotification('Failed to start: ' + data.message, true);
                 }
             } catch (error) {
                 showNotification('Error: ' + error.message, true);
@@ -773,14 +769,14 @@
 
         async function disconnectFromTeamSpeak() {
             try {
-                showNotification('Disconnecting from TeamSpeak server...');
+                showNotification('Stopping SinusBot instance...');
                 const response = await fetch('/api/teamspeak/disconnect-ts', { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
-                    showNotification('Successfully disconnected from TeamSpeak');
+                    showNotification('SinusBot instance stopped successfully');
                     await checkTeamSpeakStatus();
                 } else {
-                    showNotification('Failed to disconnect: ' + data.message, true);
+                    showNotification('Failed to stop: ' + data.message, true);
                 }
             } catch (error) {
                 showNotification('Error: ' + error.message, true);

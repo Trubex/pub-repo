@@ -66,20 +66,12 @@ class TeamSpeakBot {
 
   async connectToTeamSpeak() {
     try {
-      // First check if already connected
-      const isConnected = await this.sinusbot.isInstanceConnected();
-
-      if (isConnected) {
-        logger.info(`SinusBot is already connected to TeamSpeak (${config.teamspeak.host})`);
-        return { success: true, message: 'Already connected to TeamSpeak', alreadyConnected: true };
-      }
-
-      // Try to connect
+      // Start the SinusBot instance
       await this.sinusbot.connectInstance();
-      logger.success(`SinusBot connected to TeamSpeak at ${config.teamspeak.host}`);
-      return { success: true, message: 'Successfully connected to TeamSpeak' };
+      logger.success(`SinusBot instance started for ${config.teamspeak.host}`);
+      return { success: true, message: 'SinusBot instance started successfully' };
     } catch (error) {
-      logger.error('Failed to connect to TeamSpeak: ' + error.message);
+      logger.error('Failed to start SinusBot instance: ' + error.message);
       return { success: false, message: error.message };
     }
   }
@@ -87,26 +79,39 @@ class TeamSpeakBot {
   async disconnectFromTeamSpeak() {
     try {
       await this.sinusbot.disconnectInstance();
-      logger.success('SinusBot disconnected from TeamSpeak');
-      return { success: true, message: 'Successfully disconnected from TeamSpeak' };
+      logger.success('SinusBot instance stopped');
+      return { success: true, message: 'SinusBot instance stopped successfully' };
     } catch (error) {
-      logger.error('Failed to disconnect from TeamSpeak: ' + error.message);
+      logger.error('Failed to stop SinusBot instance: ' + error.message);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async restartTeamSpeak() {
+    try {
+      await this.sinusbot.restartInstance();
+      logger.success('SinusBot instance restarted');
+      return { success: true, message: 'SinusBot instance restarted successfully' };
+    } catch (error) {
+      logger.error('Failed to restart SinusBot instance: ' + error.message);
       return { success: false, message: error.message };
     }
   }
 
   async getTeamSpeakConnectionStatus() {
     try {
-      const isConnected = await this.sinusbot.isInstanceConnected();
-      const info = await this.sinusbot.getInstanceInfo();
+      const status = await this.sinusbot.getInstanceInfo();
+      const isRunning = await this.sinusbot.isInstanceConnected();
+
       return {
-        connected: isConnected,
+        connected: isRunning,
         server: config.teamspeak.host,
-        instanceRunning: info.running,
-        nickname: info.nick || 'SinusBot'
+        currentTrack: status.currentTrack || null,
+        playing: status.playing || false,
+        nickname: 'SinusBot'
       };
     } catch (error) {
-      logger.error('Failed to get TeamSpeak connection status: ' + error.message);
+      logger.error('Failed to get instance status: ' + error.message);
       return {
         connected: false,
         server: config.teamspeak.host,

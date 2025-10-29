@@ -163,15 +163,17 @@ class SinusBotClient {
   }
 
   async getInstanceInfo() {
-    const data = await this.request(`/api/v1/bot/i/${this.instanceId}`);
+    // Use the status endpoint which actually exists in the SinusBot API
+    const data = await this.request(`/api/v1/bot/i/${this.instanceId}/status`);
     return data;
   }
 
   async isInstanceConnected() {
     try {
-      const info = await this.getInstanceInfo();
-      // Check if the instance is running and connected to TeamSpeak
-      return info && info.running === true && info.connected === true;
+      const status = await this.getInstanceInfo();
+      // Check if the instance is running based on status
+      // Status includes fields like: currentTrack, position, shuffle, repeat, etc.
+      return status && typeof status === 'object';
     } catch (error) {
       logger.error('Failed to check instance connection: ' + error.message);
       return false;
@@ -180,24 +182,36 @@ class SinusBotClient {
 
   async connectInstance() {
     try {
-      logger.info('Attempting to connect SinusBot instance to TeamSpeak...');
-      await this.request(`/api/v1/bot/i/${this.instanceId}/connect`, 'POST');
-      logger.success('SinusBot instance connected to TeamSpeak');
+      logger.info('Starting SinusBot instance...');
+      await this.request(`/api/v1/bot/i/${this.instanceId}/spawn`, 'POST');
+      logger.success('SinusBot instance started');
       return true;
     } catch (error) {
-      logger.error('Failed to connect instance: ' + error.message);
+      logger.error('Failed to start instance: ' + error.message);
       throw error;
     }
   }
 
   async disconnectInstance() {
     try {
-      logger.info('Disconnecting SinusBot instance from TeamSpeak...');
-      await this.request(`/api/v1/bot/i/${this.instanceId}/disconnect`, 'POST');
-      logger.success('SinusBot instance disconnected from TeamSpeak');
+      logger.info('Stopping SinusBot instance...');
+      await this.request(`/api/v1/bot/i/${this.instanceId}/kill`, 'POST');
+      logger.success('SinusBot instance stopped');
       return true;
     } catch (error) {
-      logger.error('Failed to disconnect instance: ' + error.message);
+      logger.error('Failed to stop instance: ' + error.message);
+      throw error;
+    }
+  }
+
+  async restartInstance() {
+    try {
+      logger.info('Restarting SinusBot instance...');
+      await this.request(`/api/v1/bot/i/${this.instanceId}/respawn`, 'POST');
+      logger.success('SinusBot instance restarted');
+      return true;
+    } catch (error) {
+      logger.error('Failed to restart instance: ' + error.message);
       throw error;
     }
   }
