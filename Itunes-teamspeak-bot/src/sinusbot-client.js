@@ -138,7 +138,20 @@ class SinusBotClient {
     const response = await fetch(fullUrl, options);
 
     if (!response.ok) {
+      const errorBody = await response.text();
+      logger.error(`API request failed: ${response.status} ${response.statusText}`);
+      logger.error(`Response body: ${errorBody.substring(0, 200)}`);
       throw new Error(`API request failed: ${response.statusText}`);
+    }
+
+    // Check if response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const htmlBody = await response.text();
+      logger.error(`Expected JSON but got: ${contentType}`);
+      logger.error(`Response body (first 300 chars): ${htmlBody.substring(0, 300)}`);
+      logger.error(`Final URL after redirects: ${response.url}`);
+      throw new Error(`Expected JSON response but got ${contentType || 'unknown content type'}`);
     }
 
     return await response.json();
